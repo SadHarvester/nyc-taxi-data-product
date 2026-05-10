@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: DataProductContract
+product:
+  name: nyc_taxi_monthly_borough_stats
+  displayName: NYC Taxi Monthly Borough Statistics
+  version: 1.0.0
+  status: ready_for_class_submission
+  owner:
+    name: Wiktor Lenarczyk
+    role: Data Product Owner / Student
+    contact: MS Teams / PJATK
+  purpose: >
+    The product provides curated monthly statistics for NYC Yellow Taxi trips aggregated by pickup and dropoff borough.
+    It is designed for simple analytical consumption, dashboards and visualizations, for example comparing demand,
+    average trip distance and revenue between NYC boroughs over time.
+  businessProblem: >
+    Raw taxi trip files are large and difficult to consume directly. This data product transforms raw trip-level data
+    into a clean, documented and quality-checked Gold table that another student can query without understanding the
+    whole ingestion pipeline.
+
+sources:
+  - name: NYC TLC Yellow Taxi Trip Records
+    type: parquet
+    location: data/raw/yellow/yellow_tripdata_YYYY-MM.parquet
+    provider: NYC Taxi & Limousine Commission
+    ingestionMode: batch_download
+  - name: NYC TLC Taxi Zone Lookup
+    type: csv
+    location: data/raw/lookups/taxi_zone_lookup.csv
+    provider: NYC Taxi & Limousine Commission
+    ingestionMode: batch_download
+
+processing:
+  architecture: Medallion Architecture
+  engine: DuckDB
+  orchestration: Dagster
+  layers:
+    bronze:
+      table: bronze_yellow_trips
+      description: Raw records loaded from monthly Yellow Taxi Parquet files.
+    silver:
+      table: silver_yellow_trips
+      description: Cleaned trips with valid timestamps, positive distance, non-negative total amount and non-null location IDs.
+    gold:
+      table: gold_monthly_borough_stats
+      description: Monthly aggregated analytical table for consumption.
+  entryPoints:
+    fullRun: python scripts/main.py --mode full
+    incrementalRun: python scripts/main.py --mode incremental
+    dagsterUi: python -m dagster dev -f orchestration/dagster_pipeline.py
+
+schema:
+  table: gold_monthly_borough_stats
+  columns:
+    - name: trip_month
+      type: DATE/TIMESTAMP
+      nullable: false
+      description: First day of the month of taxi pickup, used as monthly aggregation key.
+    - name: pickup_borough
+      type: VARCHAR
+      nullable: true
+      description: NYC borough where the trip started, joined from the taxi zone lookup table.
+    - name: dropoff_borough
+      type: VARCHAR
+      nullable: true
+      description: NYC borough where the trip ended, joined from the taxi zone lookup table.
+    - name: trip_count
+      type: BIGINT
+      nullable: false
+      description: Number of valid Silver trips in the monthly pickup/dropoff borough combination.
+    - name: avg_trip_distance
+      type: DOUBLE
+      nullable: true
+      description: Average trip distance in miles for the monthly borough pair.
+    - name: avg_total_amount
+      type: DOUBLE
+      nullable: true
+      description: Average total trip amount in USD for the monthly borough pair.
+    - name: total_revenue
+      type: DOUBLE
+      nullable: true
+      description: Sum of total trip amount in USD for the monthly borough pair.
+
+refresh:
+  frequency: On demand / after each pipeline run
+  expectedCadence: Every pipeline run; daily or monthly if scheduled
+  latencyExpectation: Gold table is refreshed immediately after Bronze and Silver transformations finish.
+  lastSuccessfulRun: 2026-05-10 20:05:57 Europe/Warsaw
+  lastObservedGoldRows: 3312
+
+access:
+  primaryMethod: DuckDB local database
+  databaseFile: warehouse.duckdb
+  table: gold_monthly_borough_stats
+  alternativeExports:
+    - export/gold_monthly_borough_stats.csv
+    - export/gold_monthly_borough_stats.parquet
+  exampleUsage:
+    sql: |
+      SELECT trip_month, pickup_borough, SUM(trip_count) AS trips, SUM(total_revenue) AS revenue
+      FROM gold_monthly_borough_stats
+      GROUP BY trip_month, pickup_borough
+      ORDER BY trip_month, trips DESC;
+    python: |
+      import duckdb
+      con = duckdb.connect('warehouse.duckdb')
+      df = con.sql('SELECT * FROM gold_monthly_borough_stats LIMIT 100').df()
+      print(df.head())
+
+qualityMetrics:
+  - name: gold_row_count
+    definition: Number of records in the Gold data product table after pipeline execution.
+    currentValue: 3312
+    status: PASS
+    threshold: "> 0"
+    updateCadence: Every pipeline run
+  - name: gold_key_completeness
+    definition: Percentage of Gold rows where trip_month, pickup_borough and dropoff_borough are not null.
+    currentValue: 100.0%
+    status: PASS
+    threshold: ">= 95%"
+    updateCadence: Every pipeline run
+  - name: positive_trip_count_validity
+    definition: Percentage of Gold rows where trip_count is greater than 0.
+    currentValue: 100.0%
+    status: PASS
+    threshold: "100%"
+    updateCadence: Every pipeline run
+  - name: non_negative_amount_validity
+    definition: Percentage of Gold rows where avg_total_amount and total_revenue are non-negative.
+    currentValue: 100.0%
+    status: PASS
+    threshold: ">= 99%"
+    updateCadence: Every pipeline run
+  - name: data_freshness_months
+    definition: Difference in months between current date and the latest trip_month available in the Gold table.
+    currentValue: 74 months
+    status: WARN
+    threshold: "Depends on downloaded months; expected <= 6 months for current datasets"
+    updateCadence: Every pipeline run
+
+knownLimitations:
+  - Data freshness is WARN in the submitted run because the downloaded TLC source files are historical rather than current operational data. This does not block historical analysis.
+  - The product depends on locally downloaded NYC TLC source files; repository users must run the download step first or receive exported data separately.
+  - The current incremental mode tracks execution state and skips already downloaded files, but Gold rebuild is still table-level rather than strict partition-only processing.
+  - Borough values depend on successful join with taxi_zone_lookup.csv; unknown or changed zone IDs may cause null boroughs.
+  - The product is aggregated monthly, so it is not suitable for trip-level investigations.
+  - Fare amounts are taken from source records and cleaned with basic validity rules; extreme but valid outliers may remain.
+
+lineage:
+  - bronze_yellow_trips <- yellow_tripdata_*.parquet
+  - bronze_taxi_zones <- taxi_zone_lookup.csv
+  - silver_yellow_trips <- bronze_yellow_trips with cleaning rules
+  - gold_monthly_borough_stats <- silver_yellow_trips joined to bronze_taxi_zones and aggregated monthly
+
+marketplace:
+  shortDescription: Monthly NYC Yellow Taxi demand and revenue statistics by pickup and dropoff borough.
+  usefulFor:
+    - Dashboard showing taxi demand by borough and month
+    - Revenue and average fare analysis
+    - Comparison of borough-to-borough mobility patterns
+    - Data quality and medallion architecture demonstration

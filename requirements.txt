@@ -1,0 +1,6 @@
+duckdb
+pandas
+requests
+dagster
+dagster-webserver
+pyarrow

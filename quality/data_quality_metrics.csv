@@ -1,0 +1,6 @@
+metric_name,metric_definition,current_value,expected_threshold,status,update_cadence,calculated_at
+data_freshness_months,Difference in months between current date and the latest trip_month available in the Gold table.,74,<= 6 months if current source files are downloaded,WARN,Every pipeline run,2026-05-10 20:05:57.458750+02:00
+gold_key_completeness,"% of Gold rows where trip_month, pickup_borough and dropoff_borough are not null.",100.0%,>= 95%,PASS,Every pipeline run,2026-05-10 20:05:57.458750+02:00
+gold_row_count,Number of records in the Gold data product table after pipeline execution.,3312,> 0,PASS,Every pipeline run,2026-05-10 20:05:57.458750+02:00
+non_negative_amount_validity,% of Gold rows where avg_total_amount and total_revenue are non-negative.,100.0%,>= 99%,PASS,Every pipeline run,2026-05-10 20:05:57.458750+02:00
+positive_trip_count_validity,% of Gold rows where trip_count is greater than 0.,100.0%,100%,PASS,Every pipeline run,2026-05-10 20:05:57.458750+02:00

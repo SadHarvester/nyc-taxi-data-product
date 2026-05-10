@@ -1,0 +1,3 @@
+-- Bronze is now created dynamically in scripts/run_pipeline.py.
+-- Reason: NYC TLC monthly Parquet files have small schema differences between years.
+-- The Python loader normalizes missing optional columns, for example congestion_surcharge.
