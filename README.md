@@ -321,28 +321,6 @@ It describes:
 - known limitations
 - SQL and Python usage examples
 
-## MS Teams Data Marketplace
-
-Before class, publish the following files in MS Teams Data Marketplace:
-
-- `docs/NYC_Taxi_Data_Product_Card.docx`
-- `docs/NYC_Taxi_Data_Product_Card.pdf`
-- `data_product_contract.yaml`
-- `quality/data_quality_metrics.csv`
-- link to Git repository
-- optionally `export/gold_monthly_borough_stats.csv` or `.parquet`
-
-Detailed step-by-step instructions are in:
-
-```text
-docs/WHAT_TO_DO_NEXT.md
-```
-
----
-
-## Note: HTTP 403 during NYC TLC download
-
-Some historical TLC CloudFront files may return `403 Forbidden`. The downloader has been updated to avoid failing the entire pipeline on one unavailable monthly source file. By default it downloads/uses the range `2014-01` to `2018-07`, which avoids the problematic `2018-08` file and is sufficient for the class data product. You can override the range with environment variables:
 
 ```powershell
 $env:NYC_TAXI_START_YEAR="2018"

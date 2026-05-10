@@ -20,11 +20,10 @@ Produkt pomaga szybko analizować ruch taksówek w Nowym Jorku bez pracy na suro
 - Contract file: `data_product_contract.yaml`
 
 ## Git / contract
-Wklej tutaj link do swojego repozytorium Git po wypchnięciu projektu:
 
-`TU_WKLEJ_LINK_DO_REPO`
 
-Jeżeli repo jest prywatne: dostęp przez zaproszenie do repo albo przez pliki CSV/Parquet udostępnione w tym folderze MS Teams.
+`https://github.com/SadHarvester/nyc-taxi-data-product/tree/main`
+
 
 ## Quality metrics - last local run
 Calculated at: `2026-05-10 20:05 Europe/Warsaw`
@@ -40,4 +39,4 @@ Calculated at: `2026-05-10 20:05 Europe/Warsaw`
 Freshness is WARN because the downloaded TLC source files are historical. This does not block historical analysis of NYC Taxi patterns.
 
 ## Owner / contact
-Wiktor Lenarczyk - MS Teams / PJATK
+Wiktor Lenarczyk
